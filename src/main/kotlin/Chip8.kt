@@ -59,11 +59,8 @@ class Chip8 {
 
 
     fun emulate() {
-        println("==========>>>> EMULATE")
-
         opcode = (memory[pc].toPositiveInt() shl 8) or memory[pc + 1].toPositiveInt()
 
-        println(Integer.toString(pc) + "  " + Integer.toHexString(opcode))
         when(opcode and MASK) {
             0x0000 -> process_00E(opcode)
 
@@ -139,18 +136,13 @@ class Chip8 {
 
 
             else -> println("Unknown Main Opcode: " + Integer.toHexString(opcode and MASK))
-
-
         }
 
     }
 
     private fun process_00E(opcode: Int) {
-        println(Integer.toHexString((opcode and 0x000F)))
-
         when (opcode and 0x000F) {
             0x0000 -> {
-                println("Clear screen")
                 for (i in 0..2047) {
                     gfx[i] = 0
                 }
@@ -158,8 +150,6 @@ class Chip8 {
             }
 
             0x000E -> {
-                println("Return")
-
                 --sp
                 pc = stack[sp]
                 pc += 2
@@ -172,8 +162,6 @@ class Chip8 {
 
 
     private fun process_FX(opcode: Int) {
-        println("Processing FX: " + Integer.toHexString(opcode and 0x00FF))
-
         when(opcode and 0x00FF) {
             0x0007 -> {
                 V[opcode and 0x0F00 shr 8] = delay_timer
@@ -209,7 +197,6 @@ class Chip8 {
             }
             0x0029 -> {
                 I = V[opcode and 0x0F00 shr 8] * 0x5
-                println("Sprite: " + I)
                 pc += 2
             }
             0x0033 -> {

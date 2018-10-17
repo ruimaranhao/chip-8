@@ -112,7 +112,7 @@ class Chip8 {
                 var pixel : Byte
 
                 V[0xF] = 0
-
+                
                 for(yline in 0 until height) {
                     pixel = memory[I + yline]
 
@@ -196,7 +196,8 @@ class Chip8 {
                 pc += 2
             }
             0x0029 -> {
-                I = V[opcode and 0x0F00 shr 8] * 0x5
+                println("setting I")
+                I = V[opcode and 0x0F00 shr 8] * 5
                 pc += 2
             }
             0x0033 -> {

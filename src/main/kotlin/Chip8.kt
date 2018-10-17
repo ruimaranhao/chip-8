@@ -41,12 +41,7 @@ class Chip8 {
     var V = Array(16) { _ -> 0}
     var gfx = Array(64 * 32) { _ -> 0}
 
-    val display: ByteArray = ByteArray(64*32)
-
     lateinit var memory: ByteArray
-
-    var debug = StringBuilder("")
-
 
     fun load_rom(file : String): Boolean {
         var rom = File(file).readBytes()
@@ -91,8 +86,6 @@ class Chip8 {
 
                 V[reg] = value
                 pc += 2
-
-                debug.append("set v${reg.hex}, 0x${value.hex}\n")
             }
 
             0x7000 -> {
@@ -263,7 +256,7 @@ class Chip8 {
 
     fun display(): String {
         val builder = StringBuilder()
-        builder.append("-".repeat(64) + "\n")
+        builder.append(" " + "-".repeat(64) + "\n")
         for(y in 0..31) {
             builder.append("|")
             for (x in 0..63) {
@@ -271,7 +264,7 @@ class Chip8 {
             }
             builder.append("|\n")
         }
-        builder.append("-".repeat(64) + "\n")
+        builder.append(" " + "-".repeat(64) + "\n")
         return builder.toString()
     }
 
@@ -281,7 +274,7 @@ fun main(args: Array<String>) {
     val chip8 = Chip8()
     chip8.load_rom("roms/PONG")
 
-    for(i in  1 until 100){
+    for(i in  1 until 1000){
         chip8.emulate()
     }
 

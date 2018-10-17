@@ -52,6 +52,11 @@ class Chip8 {
         var rom = File(file).readBytes()
 
         memory = ByteArray(512 + rom.size)
+
+        for (i in 0 until fontData.size) {
+            memory[i] = fontData[i].toByte()
+        }
+
         System.arraycopy(rom, 0, memory, 512, rom.size)
 
         return true
@@ -211,6 +216,7 @@ class Chip8 {
             }
             0x0029 -> {
                 I = V[opcode and 0x0F00 shr 8] * 0x5
+                println("Sprite: " + I)
                 pc += 2
             }
             0x0033 -> {
@@ -257,12 +263,15 @@ class Chip8 {
 
     fun display(): String {
         val builder = StringBuilder()
+        builder.append("-".repeat(64) + "\n")
         for(y in 0..31) {
+            builder.append("|")
             for (x in 0..63) {
-                builder.append(if (gfx[x + y * 64].toInt() != 0)  "*" else " ")
+                builder.append(if (gfx[x + y * 64] != 0)  "*" else " ")
             }
-            builder.append("\n")
+            builder.append("|\n")
         }
+        builder.append("-".repeat(64) + "\n")
         return builder.toString()
     }
 
@@ -274,8 +283,9 @@ fun main(args: Array<String>) {
 
     for(i in  1 until 100){
         chip8.emulate()
-        println(chip8.display())
     }
+
+    println(chip8.display())
 
 
 }

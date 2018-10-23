@@ -1,15 +1,12 @@
+package com.ruimaranhao.chip8
+
 import java.io.File
-import java.util.*
 
 const val MASK = 0xF000
 
 class Chip8 {
-    fun Byte.toPositiveInt() = toInt() and 0xFF
-    fun IntRange.random() = Random().nextInt((endInclusive + 1) - start) +  start
-    val Int.hex: String get() = Integer.toHexString(this)
-    val Byte.hex: String get() = Integer.toHexString(this.toInt())
 
-    val fontData = intArrayOf(
+    val fonts = intArrayOf(
             0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
             0x20, 0x60, 0x20, 0x20, 0x70, // 1
             0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -47,8 +44,8 @@ class Chip8 {
 
         memory = ByteArray(512 + rom.size)
 
-        for (i in 0 until fontData.size) {
-            memory[i] = fontData[i].toByte()
+        for (i in 0 until fonts.size) {
+            memory[i] = fonts[i].toByte()
         }
 
         System.arraycopy(rom, 0, memory, 512, rom.size)
@@ -78,12 +75,10 @@ class Chip8 {
 
     fun emulate() {
         opcode = (memory[pc].toPositiveInt() shl 8) or memory[pc + 1].toPositiveInt()
+        pc += 2
 
         when(opcode and MASK) {
-            0x0000 -> {
-                process_00E(opcode)
-                pc += 2
-            }
+            0x0000 -> process_00E(opcode)
 
             0x1000 -> pc = addr(opcode)
 
@@ -92,76 +87,31 @@ class Chip8 {
                 pc = addr(opcode)
             }
 
-            0x3000 -> pc += if (getRegVx(opcode) === value(opcode)) 4 else 2
+            0x3000 -> pc += if (getRegVx(opcode) == value(opcode)) 2 else 0
 
-            0x4000 -> pc += if (getRegVx(opcode) !== value(opcode)) 4 else 2
+            0x4000 -> pc += if (getRegVx(opcode) != value(opcode)) 2 else 0
 
-            0x5000 -> pc += if (getRegVx(opcode) === getRegVy(opcode)) 4 else 2
+            0x5000 -> pc += if (getRegVx(opcode) == getRegVy(opcode)) 2 else 0
 
-            0x6000 -> {
-                updateRegVx(opcode, value(opcode))
-                pc += 2
-            }
+            0x6000 -> updateRegVx(opcode, value(opcode))
 
-            0x7000 -> {
-                updateRegVx(opcode, getRegVx(opcode) + value(opcode))
-                pc += 2
-            }
+            0x7000 -> updateRegVx(opcode, getRegVx(opcode) + value(opcode))
 
-            0x8000 -> {
-                process_8(opcode)
-                pc += 2
-            }
+            0x8000 -> process_8(opcode)
 
-            0x9000 -> pc += if (getRegVx(opcode) !== getRegVy(opcode)) 4 else 2
+            0x9000 -> pc += if (getRegVx(opcode) != getRegVy(opcode)) 2 else 0
 
-            0xA000 -> {
-                I = addr(opcode)
-                pc += 2
-            }
+            0xA000 -> I = addr(opcode)
 
             0xB000 -> pc = addr(opcode) + V[0]
 
-            0xC000 -> {
-                updateRegVx(opcode, (0..0xFF).random() % (0xFF + 1) and value(opcode))
-                pc += 2
-            }
+            0xC000 -> updateRegVx(opcode, (0..0xFF).random() % (0xFF + 1) and value(opcode))
 
-            0xD000 -> {
-                val x = getRegVx(opcode)
-                val y = getRegVy(opcode)
-                val height = opcode and 0x000F
-                var pixel : Byte
+            0xD000 -> drawSprite(opcode)
 
-                V[0xF] = 0
+            0xE000 -> process_EX(opcode)
 
-                for(yline in 0 until height) {
-                    pixel = memory[I + yline]
-
-                    for(xline in 0..8) {
-                        if (pixel.toPositiveInt() and (0x80 shr xline) != 0) {
-                            if (gfx[x + xline + (y + yline) * 64] === 1) {
-                                V[0xF] = 1
-                            }
-                            gfx[x + xline + (y + yline) * 64] = gfx[x + xline + (y + yline) * 64] xor 1
-                        }
-                    }
-                }
-
-                pc += 2
-            }
-
-            0xE000 -> {
-                process_EX(opcode)
-                pc += 2
-            }
-
-
-            0xF000 -> {
-                process_FX(opcode)
-                pc += 2
-            }
-
+            0xF000 -> process_FX(opcode)
 
             else -> println("Unknown Main Opcode: " + Integer.toHexString(opcode and MASK))
         }
@@ -176,6 +126,27 @@ class Chip8 {
 
     }
 
+    private fun drawSprite(opcode: Int) {
+        val x = getRegVx(opcode)
+        val y = getRegVy(opcode)
+        var pixel : Byte
+
+        V[0xF] = 0
+
+        for(yline in 0 until (opcode and 0x000F)) {
+            pixel = memory[I + yline]
+
+            for(xline in 0..8) {
+                if (pixel.toPositiveInt() and (0x80 shr xline) != 0) {
+                    if (gfx[x + xline + (y + yline) * 64] == 1) {
+                        V[0xF] = 1
+                    }
+                    gfx[x + xline + (y + yline) * 64] = gfx[x + xline + (y + yline) * 64] xor 1
+                }
+            }
+        }
+    }
+
     private fun process_00E(opcode: Int) {
         when (opcode) {
             0x00E0 -> {
@@ -184,9 +155,7 @@ class Chip8 {
                 }
             }
 
-            0x00EE -> {
-                pc = stack[--sp]
-            }
+            0x00EE -> pc = stack[--sp]
 
             else -> println("\nUnhandled opcode: $opcode\n")
 
@@ -196,8 +165,7 @@ class Chip8 {
 
     private fun process_FX(opcode: Int) {
         when(value(opcode)) {
-            0x0007 ->
-                updateRegVx(opcode, dt)
+            0x0007 -> updateRegVx(opcode, dt)
 
             0x000A -> {
                 pc -= 2
@@ -218,8 +186,7 @@ class Chip8 {
                 I += getRegVx(opcode)
             }
 
-            0x0029 ->
-                I = getRegVx(opcode) * 0x5
+            0x0029 -> I = getRegVx(opcode) * 0x5
 
             0x0033 -> {
                 memory[I] = (getRegVx(opcode) / 100).toByte()
@@ -236,6 +203,7 @@ class Chip8 {
                 for (i in 0..((opcode and 0x0F00) shr 8))
                     V[i] = memory[I + i].toPositiveInt()
             }
+
             else -> println("Unknown opcode [0xFXAB]: " + Integer.toHexString(opcode and 0x00FF))
 
         }
@@ -243,11 +211,9 @@ class Chip8 {
 
     private fun process_EX(opcode: Int) {
         when(value(opcode)) {
-            0x009E ->
-                pc += if (keys[getRegVx(opcode)] != 0) 2 else 0
+            0x009E -> pc += if (keys[getRegVx(opcode)] != 0) 2 else 0
 
-            0x00A1 ->
-                pc += if (keys[getRegVx(opcode)] == 0) 2 else 0
+            0x00A1 -> pc += if (keys[getRegVx(opcode)] == 0) 2 else 0
         }
     }
 

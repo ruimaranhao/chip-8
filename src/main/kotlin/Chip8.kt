@@ -32,12 +32,11 @@ class Chip8 {
     var opcode = 0
     var I = 0
     var sp = 0
-
-    var delay_timer = 0
-    var sound_timer = 0
+    var dt = 0
+    var st = 0
 
     var stack = Array(16) { _ -> 0}
-    var key = Array(16) { _ -> 0}
+    var keys = Array(16) { _ -> 0}
     var V = Array(16) { _ -> 0}
     var gfx = Array(64 * 32) { _ -> 0}
 
@@ -57,57 +56,80 @@ class Chip8 {
         return true
     }
 
+    fun addr(opcode: Int): Int {
+        return opcode and 0x0FFF
+    }
+
+    fun value(opcode: Int): Int {
+        return opcode and 0x00FF
+    }
+
+    fun getRegVx(opcode: Int): Int {
+        return V[opcode and 0x0F00 shr 8]
+    }
+
+    fun updateRegVx(opcode: Int, value: Int) {
+        V[opcode and 0x0F00 shr 8] = value
+    }
+
+    fun getRegVy(opcode: Int): Int {
+        return V[opcode and 0x00F0 shr 4]
+    }
 
     fun emulate() {
         opcode = (memory[pc].toPositiveInt() shl 8) or memory[pc + 1].toPositiveInt()
 
         when(opcode and MASK) {
-            0x0000 -> process_00E(opcode)
+            0x0000 -> {
+                process_00E(opcode)
+                pc += 2
+            }
 
-            0x1000 -> pc = opcode and 0x0FFF
+            0x1000 -> pc = addr(opcode)
 
             0x2000 -> {
                 stack[sp++] = pc
-                pc = opcode and 0x0FFF
+                pc = addr(opcode)
             }
 
-            0x3000 -> pc += if (V[opcode and 0x0F00 shr 8] === opcode and 0x00FF) 4 else 2
+            0x3000 -> pc += if (getRegVx(opcode) === value(opcode)) 4 else 2
 
-            0x4000 -> pc += if (V[opcode and 0x0F00 shr 8] !== opcode and 0x00FF) 4 else 2
+            0x4000 -> pc += if (getRegVx(opcode) !== value(opcode)) 4 else 2
 
-            0x5000 -> pc += if (V[opcode and 0x0F00 shr 8] === V[opcode and 0x00F0 shr 4]) 4 else 2
+            0x5000 -> pc += if (getRegVx(opcode) === getRegVy(opcode)) 4 else 2
 
             0x6000 -> {
-                val reg = opcode and 0x0F00 shr 8
-                val value = opcode and 0x00FF
-
-                V[reg] = value
+                updateRegVx(opcode, value(opcode))
                 pc += 2
             }
 
             0x7000 -> {
-                V[opcode and 0x0F00 shr 8] += opcode and 0x00F
+                updateRegVx(opcode, getRegVx(opcode) + value(opcode))
                 pc += 2
             }
 
+            0x8000 -> {
+                process_8(opcode)
+                pc += 2
+            }
 
-            0x9000 -> pc += if (V[opcode and 0x0F00 shr 8] !== V[opcode and 0x00F0 shr 4]) 4 else 2
+            0x9000 -> pc += if (getRegVx(opcode) !== getRegVy(opcode)) 4 else 2
 
             0xA000 -> {
-                I = opcode and 0x0FFF
+                I = addr(opcode)
                 pc += 2
             }
 
-            0xB000 -> pc = (opcode and 0x0FFF) + V[0]
+            0xB000 -> pc = addr(opcode) + V[0]
 
             0xC000 -> {
-                V[opcode and 0x0F00 shr 8] = (0..0xFF).random() % (0xFF + 1) and (opcode and 0x00FF)
+                updateRegVx(opcode, (0..0xFF).random() % (0xFF + 1) and value(opcode))
                 pc += 2
             }
 
             0xD000 -> {
-                val x = V[opcode and 0x0F00 shr 8]
-                val y = V[opcode and 0x00F0 shr 4]
+                val x = getRegVx(opcode)
+                val y = getRegVy(opcode)
                 val height = opcode and 0x000F
                 var pixel : Byte
 
@@ -129,96 +151,90 @@ class Chip8 {
                 pc += 2
             }
 
-            0xE000 -> process_EX(opcode)
+            0xE000 -> {
+                process_EX(opcode)
+                pc += 2
+            }
 
 
-            0xF000 -> process_FX(opcode)
+            0xF000 -> {
+                process_FX(opcode)
+                pc += 2
+            }
 
 
             else -> println("Unknown Main Opcode: " + Integer.toHexString(opcode and MASK))
         }
 
+        if (dt > 0) {
+            --dt
+        }
+
+        if (st > 0) {
+            --st
+        }
+
     }
 
     private fun process_00E(opcode: Int) {
-        when (opcode and 0x000F) {
-            0x0000 -> {
-                for (i in 0..2047) {
+        when (opcode) {
+            0x00E0 -> {
+                for (i in 0..64*32) {
                     gfx[i] = 0
                 }
-                pc += 2
             }
 
-            0x000E -> {
-                --sp
-                pc = stack[sp]
-                pc += 2
+            0x00EE -> {
+                pc = stack[--sp]
             }
 
-            else -> println("\nUnknown opcode [0x00E0]: ${opcode}\n")
+            else -> println("\nUnhandled opcode: $opcode\n")
 
         }
     }
 
 
     private fun process_FX(opcode: Int) {
-        when(opcode and 0x00FF) {
-            0x0007 -> {
-                V[opcode and 0x0F00 shr 8] = delay_timer
-                pc += 2
-            }
-            0x000A -> {
-                var key_pressed = false
+        when(value(opcode)) {
+            0x0007 ->
+                updateRegVx(opcode, dt)
 
-                for (i in 0..15) {
-                    if (key[i] !== 0) {
-                        V[opcode and 0x0F00 shr 8] = i
-                        key_pressed = true
+            0x000A -> {
+                pc -= 2
+
+                for (k in 0..15) {
+                    if (keys[k] === 1) {
+                        updateRegVx(opcode, k)
+                        pc += 2
                     }
                 }
+            }
+            0x0015 -> dt = getRegVx(opcode)
 
-                if(!key_pressed)
-                    return
+            0x0018 -> st = getRegVx(opcode)
 
-                pc += 2
-            }
-            0x0015 -> {
-                delay_timer = V[opcode and 0x0F00 shr 8]
-                pc += 2
-            }
-            0x0018 -> {
-                sound_timer = V[opcode and 0x0F00 shr 8]
-                pc += 2
-            }
             0x001E -> {
-                V[0xF] = if (I + V[opcode and 0x0F00 shr 8] > 0xFFF) 1 else 0
-                I += V[opcode and 0x0F00 shr 8]
-                pc += 2
+                V[0xF] = if (I + getRegVx(opcode) > 0xFFF) 1 else 0
+                I += getRegVx(opcode)
             }
-            0x0029 -> {
-                I = V[opcode and 0x0F00 shr 8] * 5
-                pc += 2
-            }
+
+            0x0029 ->
+                I = getRegVx(opcode) * 0x5
+
             0x0033 -> {
-                memory[I] = (V[opcode and 0x0F00 shr 8] / 100).toByte()
-                memory[I + 1] = (V[opcode and 0x0F00 shr 8] / 10 % 10).toByte()
-                memory[I + 2] = (V[opcode and 0x0F00 shr 8] % 100 % 10).toByte()
-                pc += 2
+                memory[I] = (getRegVx(opcode) / 100).toByte()
+                memory[I + 1] = (getRegVx(opcode) / 10 % 10).toByte()
+                memory[I + 2] = (getRegVx(opcode) % 100 % 10).toByte()
             }
+
             0x0055 -> {
-                for (i in 0..(opcode and 0x0F00 shr 8))
+                for (i in 0..((opcode and 0x0F00) shr 8))
                     memory[I + i] = V[i].toByte()
-
-                I += (opcode and 0x0F00 shr 8) + 1
-                pc += 2
             }
+
             0x0065 -> {
-                for (i in 0..(opcode and 0x0F00 shr 8))
+                for (i in 0..((opcode and 0x0F00) shr 8))
                     V[i] = memory[I + i].toPositiveInt()
-
-                I += (opcode and 0x0F00 shr 8) + 1
-                pc += 2
-
             }
             else -> println("Unknown opcode [0xFXAB]: " + Integer.toHexString(opcode and 0x00FF))
 
@@ -226,16 +242,52 @@ class Chip8 {
     }
 
     private fun process_EX(opcode: Int) {
-        println("Processing EX: " + Integer.toHexString(opcode and 0x00FF))
+        when(value(opcode)) {
+            0x009E ->
+                pc += if (keys[getRegVx(opcode)] != 0) 2 else 0
 
-        when(opcode and 0x00FF) {
-            0x009E -> {
-                pc += 4
+            0x00A1 ->
+                pc += if (keys[getRegVx(opcode)] == 0) 2 else 0
+        }
+    }
+
+    private fun process_8(opcode: Int) {
+        when(opcode and 0x000F) {
+            0x0000 -> updateRegVx(opcode, getRegVy(opcode))
+
+            0x0001 -> updateRegVx(opcode, getRegVx(opcode) or getRegVy(opcode))
+
+            0x0002 -> updateRegVx(opcode, getRegVx(opcode) and getRegVy(opcode))
+
+            0x0003 -> updateRegVx(opcode, getRegVx(opcode) xor getRegVy(opcode))
+
+            0x0004 -> {
+                var result = getRegVx(opcode) + getRegVy(opcode)
+                V[0xF] = if (result > 0x00FF) 1 else 0
+                updateRegVx(opcode, result and 0x00FF)
             }
 
-            0x00A1 -> {
-                pc += 4
+            0x0005 -> {
+                V[0xF] = if (getRegVx(opcode) > getRegVy(opcode)) 1 else 0
+                updateRegVx(opcode, getRegVx(opcode) - getRegVy(opcode))
             }
+
+            0x0006 -> {
+                V[0xF] = getRegVx(opcode) and 0x1
+                updateRegVx(opcode, getRegVx(opcode)  shr 1)
+            }
+
+            0x0007 -> {
+                V[0xF] = if (getRegVy(opcode) > getRegVx(opcode)) 1 else 0
+                updateRegVx(opcode, getRegVy(opcode) - getRegVx(opcode))
+            }
+
+            0x000E -> {
+                V[0xF] = getRegVx(opcode) shr 7
+                updateRegVx(opcode, getRegVx(opcode) shl 1)
+            }
+
+            else -> println("Unknown opcode [0x8000]: " + Integer.toHexString(opcode and 0x000F))
         }
 
     }
@@ -261,11 +313,9 @@ fun main(args: Array<String>) {
     val chip8 = Chip8()
     chip8.load_rom("roms/PONG")
 
-    for(i in  1 until 1000){
+    for(i in  1 until 300){
         chip8.emulate()
     }
 
     println(chip8.display())
-
-
 }

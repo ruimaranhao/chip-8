@@ -53,23 +53,23 @@ class Chip8 {
         return true
     }
 
-    fun addr(opcode: Int): Int {
+    private fun addr(opcode: Int): Int {
         return opcode and 0x0FFF
     }
 
-    fun value(opcode: Int): Int {
+    private fun value(opcode: Int): Int {
         return opcode and 0x00FF
     }
 
-    fun getRegVx(opcode: Int): Int {
+    private fun getRegVx(opcode: Int): Int {
         return V[opcode and 0x0F00 shr 8]
     }
 
-    fun updateRegVx(opcode: Int, value: Int) {
+    private fun updateRegVx(opcode: Int, value: Int) {
         V[opcode and 0x0F00 shr 8] = value
     }
 
-    fun getRegVy(opcode: Int): Int {
+    private fun getRegVy(opcode: Int): Int {
         return V[opcode and 0x00F0 shr 4]
     }
 
@@ -277,9 +277,9 @@ class Chip8 {
 
 fun main(args: Array<String>) {
     val chip8 = Chip8()
-    chip8.load_rom("roms/PONG")
+    chip8.load_rom("roms/INVADERS")
 
-    for(i in  1 until 300){
+    for(i in  1 until 300) {
         chip8.emulate()
     }
 

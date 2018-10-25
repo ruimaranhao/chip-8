@@ -39,7 +39,7 @@ class CPU internal constructor(
     // The index register
     private var index: Int = 0
 
-    // The stack and stack pointer register
+    // The stack and stack pointer register (could be integrated into Memoery, there is space)
     private var sp: Int = 0
     private var stack = Array(16) { _ -> 0}
 

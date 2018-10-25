@@ -15,21 +15,21 @@ class CPU internal constructor(
 
 
     companion object {
-        private val MODE_NORMAL = 1
+        private val LOGGER = Logger.getLogger(EMU::class.java.name)
 
-        private val MODE_EXTENDED = 2
+        private const val MODE_NORMAL = 1
 
-        private val LOGGER = Logger.getLogger(EMU::class.java!!.getName())
+        private const val MODE_EXTENDED = 2
 
-        private val DELAY_INTERVAL: Long = 17
+        private const val DELAY_INTERVAL: Long = 17
 
-        private val NUM_REGISTERS = 16
+        private const val NUM_REGISTERS = 16
 
-        val PROGRAM_COUNTER_START = 0x200
+        private const val PROGRAM_COUNTER_START = 0x200
 
-        private val STACK_POINTER_START = 0x52
+        private const val STACK_POINTER_START = 0x52
 
-        val DEFAULT_CPU_CYCLE_TIME: Long = 2
+        private const val DEFAULT_CPU_CYCLE_TIME: Long = 2
     }
 
     // The internal 8-bit registers
@@ -85,7 +85,6 @@ class CPU internal constructor(
             }
         }, DELAY_INTERVAL, DELAY_INTERVAL)
         cpuCycleTime = DEFAULT_CPU_CYCLE_TIME
-        mode = MODE_NORMAL
 
         try {
             synthesizer = MidiSystem.getSynthesizer()
@@ -381,10 +380,8 @@ class CPU internal constructor(
         val numBytes = operand and 0xF
         v[0xF] = 0
 
-        var drawOperation = "DRAW"
         if (mode == MODE_EXTENDED && numBytes == 0) {
             drawExtendedSprite(xPos, yPos)
-            drawOperation = "DRAWEX"
         } else {
             drawNormalSprite(xPos, yPos, numBytes)
         }
@@ -395,13 +392,13 @@ class CPU internal constructor(
             for (xByte in 0..1) {
                 val colorByte = memory.read(index + yIndex * 2 + xByte)
                 var yCoord = yPos + yIndex
-                yCoord = yCoord % screen!!.height
+                yCoord %= screen!!.height
 
                 var mask = 0x80
 
                 for (xIndex in 0..7) {
                     var xCoord = xPos + xIndex + xByte * 8
-                    xCoord = xCoord % screen.width
+                    xCoord %= screen.width
 
                     var turnOn = colorByte.toInt() and mask > 0
                     val currentOn = screen.pixelOn(xCoord, yCoord)
@@ -424,13 +421,13 @@ class CPU internal constructor(
         for (yIndex in 0 until numBytes) {
             val colorByte = memory.read(index + yIndex)
             var yCoord = yPos + yIndex
-            yCoord = yCoord % screen!!.height
+            yCoord %= screen!!.height
 
             var mask = 0x80
 
             for (xIndex in 0..7) {
                 var xCoord = xPos + xIndex
-                xCoord = xCoord % screen.width
+                xCoord %= screen.width
 
                 var turnOn = colorByte.toInt() and mask > 0
                 val currentOn = screen.pixelOn(xCoord, yCoord)
@@ -448,7 +445,7 @@ class CPU internal constructor(
         }
     }
 
-    protected fun skipIfKeyPressed() {
+    private fun skipIfKeyPressed() {
         val sourceRegister = operand and 0x0F00 shr 8
         val keyToCheck = v[sourceRegister].toInt()
         if (keyboard.currentKey == keyToCheck) {
@@ -456,7 +453,7 @@ class CPU internal constructor(
         }
     }
 
-    protected fun skipIfKeyNotPressed() {
+    private fun skipIfKeyNotPressed() {
         val sourceRegister = operand and 0x0F00 shr 8
         val keyToCheck = v[sourceRegister].toInt()
         if (keyboard.currentKey != keyToCheck) {
@@ -464,12 +461,12 @@ class CPU internal constructor(
         }
     }
 
-    protected fun moveDelayTimerIntoRegister() {
+    private fun moveDelayTimerIntoRegister() {
         val targetRegister = operand and 0x0F00 shr 8
         v[targetRegister] = delay
     }
 
-    protected fun waitForKeypress() {
+    private fun waitForKeypress() {
         val targetRegister = operand and 0x0F00 shr 8
         var currentKey = keyboard.currentKey
         while (currentKey == 0) {
@@ -484,32 +481,32 @@ class CPU internal constructor(
         v[targetRegister] = currentKey.toShort()
     }
 
-    protected fun moveRegisterIntoDelayRegister() {
+    private fun moveRegisterIntoDelayRegister() {
         val sourceRegister = operand and 0x0F00 shr 8
         delay = v[sourceRegister]
     }
 
-    protected fun moveRegisterIntoSoundRegister() {
+    private fun moveRegisterIntoSoundRegister() {
         val sourceRegister = operand and 0x0F00 shr 8
         sound = v[sourceRegister]
     }
 
-    protected fun loadIndexWithSprite() {
+    private fun loadIndexWithSprite() {
         val sourceRegister = operand and 0x0F00 shr 8
         index = v[sourceRegister] * 5
     }
 
-    protected fun loadIndexWithExtendedSprite() {
+    private fun loadIndexWithExtendedSprite() {
         val sourceRegister = operand and 0x0F00 shr 8
         index = v[sourceRegister] * 10
     }
 
-    protected fun addRegisterIntoIndex() {
+    private fun addRegisterIntoIndex() {
         val sourceRegister = operand and 0x0F00 shr 8
         index += v[sourceRegister].toInt()
     }
 
-    protected fun storeBCDInMemory() {
+    private fun storeBCDInMemory() {
         val sourceRegister = operand and 0x0F00 shr 8
         val bcdValue = v[sourceRegister].toInt()
         memory.write(bcdValue / 100, index)
@@ -555,7 +552,7 @@ class CPU internal constructor(
         }
     }
 
-    protected fun enableExtendedMode() {
+    private fun enableExtendedMode() {
         screen!!.setExtendedScreenMode()
         mode = MODE_EXTENDED
     }
@@ -573,14 +570,14 @@ class CPU internal constructor(
         screen!!.scrollRight()
     }
 
-    protected fun storeRegistersInRPL() {
+    private fun storeRegistersInRPL() {
         val numRegisters = operand and 0x0F00 shr 8
         for (counter in 0..numRegisters) {
             rpl[counter] = v[counter]
         }
     }
 
-    protected fun readRegistersFromRPL() {
+    private fun readRegistersFromRPL() {
         val numRegisters = operand and 0x0F00 shr 8
         for (counter in 0..numRegisters) {
             v[counter] = rpl[counter]
@@ -621,7 +618,7 @@ class CPU internal constructor(
         }
     }
 
-    fun kill() {
+    private fun kill() {
         alive = false
         synthesizer!!.close()
     }

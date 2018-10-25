@@ -35,6 +35,7 @@ class Keyboard : KeyAdapter() {
     }
 
     fun mapKeycodeToChip8Key(keycode: Int): Int {
+        println("KC: " + keycode)
         for (i in sKeycodeMap.indices) {
             if (sKeycodeMap[i] == keycode) {
                 return i + 1

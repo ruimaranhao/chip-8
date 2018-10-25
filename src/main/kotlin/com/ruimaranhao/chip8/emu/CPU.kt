@@ -98,17 +98,10 @@ class CPU internal constructor(
     }
 
     fun fetchIncrementExecute() {
-        operand = memory.read(pc).toInt()
-        operand = operand shl 8
-        operand += memory.read(pc + 1).toInt()
-        operand = operand and 0x0FFFF
+        operand = (memory.read(pc).toInt() shl 8) or memory.read(pc + 1).toInt()
         pc += 2
-        val opcode = operand and 0x0F000 shr 12
-        executeInstruction(opcode)
-    }
 
-    private fun executeInstruction(opcode: Int) {
-        when (opcode) {
+        when ((operand and 0xF000) shr 12) {
             0x0 -> when (operand and 0x00FF) {
                 0xE0 -> screen!!.clearScreen()
 
@@ -127,7 +120,7 @@ class CPU internal constructor(
                 else -> if (operand and 0xF0 == 0xC0) {
                     scrollDown(operand)
                 } else {
-                    LOGGER.info("Operation ${operand.hex} not supported")
+                    LOGGER.info("0x0: Operation ${operand.hex} not supported")
                 }
             }
 
@@ -233,7 +226,7 @@ class CPU internal constructor(
         stack += 1
         memory.write(pc and 0xFF00 shr 8, stack)
         stack += 1
-        pc = operand and 0x0FFF
+        jumpToAddress()
     }
 
     private fun skipIfRegisterEqualValue() {
@@ -469,6 +462,7 @@ class CPU internal constructor(
     private fun waitForKeypress() {
         val targetRegister = operand and 0x0F00 shr 8
         var currentKey = keyboard.currentKey
+        println(currentKey)
         while (currentKey == 0) {
             try {
                 Thread.sleep(300)
@@ -602,7 +596,7 @@ class CPU internal constructor(
             if (!paused) {
                 fetchIncrementExecute()
                 try {
-                    Thread.sleep(cpuCycleTime.toInt().toLong())
+                    Thread.sleep(cpuCycleTime)
                 } catch (e: InterruptedException) {
                     LOGGER.warning("CPU sleep interrupted")
                 }

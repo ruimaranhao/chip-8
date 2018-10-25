@@ -12,6 +12,8 @@ class Memory {
 
         private const val MEMORY_4K = 0x1000
 
+        private const val OFFSET = 0x200
+
         private val fonts = intArrayOf(
                 0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
                 0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -31,13 +33,13 @@ class Memory {
                 0xF0, 0x80, 0xF0, 0x80, 0x80  // F
         )
 
-        private var memory = ShortArray(MEMORY_4K) { _ -> 0}
+        private var memory = ByteArray(MEMORY_4K) { _ -> 0}
     }
 
     init {
 
         for (i in 0 until fonts.size) {
-            memory[i] = fonts[i].toShort()
+            memory[i] = fonts[i].toByte()
         }
     }
 
@@ -54,14 +56,14 @@ class Memory {
             throw IllegalArgumentException("Memory access out of bounds.")
         }
 
-        memory[location] = (value and 0xFF).toShort()
+        memory[location] = (value and 0xFF).toByte()
     }
 
     fun loadRom(file : String): Boolean {
         FileInputStream(File(file)).use {
             try {
                 val data = IOUtils.toByteArray(it)
-                var currentOffset = 0x200
+                var currentOffset = OFFSET
                 for (theByte in data) {
                     write(theByte.toInt(), currentOffset)
                     currentOffset++

@@ -27,8 +27,6 @@ class CPU internal constructor(
 
         private const val PROGRAM_COUNTER_START = 0x200
 
-        private const val STACK_POINTER_START = 0x52
-
         private const val DEFAULT_CPU_CYCLE_TIME: Long = 2
     }
 
@@ -41,8 +39,9 @@ class CPU internal constructor(
     // The index register
     private var index: Int = 0
 
-    // The stack pointer register
-    private var stack: Int = 0
+    // The stack and stack pointer register
+    private var sp: Int = 0
+    private var stack = Array(16) { _ -> 0}
 
     // The program counter
     private var pc: Int = 0
@@ -211,10 +210,7 @@ class CPU internal constructor(
     }
 
     private fun returnFromSubroutine() {
-        stack -= 1
-        pc = memory.read(stack).toInt() shl 8
-        stack -= 1
-        pc += memory.read(stack).toInt()
+        pc = stack[--sp]
     }
 
     private fun jumpToAddress() {
@@ -222,10 +218,7 @@ class CPU internal constructor(
     }
 
     private fun jumpToSubroutine() {
-        memory.write(pc and 0x00FF, stack)
-        stack += 1
-        memory.write(pc and 0xFF00 shr 8, stack)
-        stack += 1
+        stack[sp++] = pc
         jumpToAddress()
     }
 
@@ -523,10 +516,11 @@ class CPU internal constructor(
     }
 
     fun reset() {
-        v = ShortArray(NUM_REGISTERS)
-        rpl = ShortArray(NUM_REGISTERS)
+        v = ShortArray(NUM_REGISTERS) { _ -> 0}
+        rpl = ShortArray(NUM_REGISTERS) { _ -> 0}
         pc = PROGRAM_COUNTER_START
-        stack = STACK_POINTER_START
+        sp = 0
+        stack = Array(NUM_REGISTERS) { _ -> 0}
         index = 0
         delay = 0
         sound = 0

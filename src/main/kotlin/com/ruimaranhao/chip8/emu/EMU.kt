@@ -35,7 +35,7 @@ class EMU
 
         private const val DEFAULT_NUMBER_OF_BUFFERS = 2
 
-        private const val DEFAULT_TITLE = "Yet Another Chip 8 Emulator, this one in Kotlin."
+        private const val DEFAULT_TITLE = "Yet Another Chip 8 Emulator, this one in Kotlin"
 
         private const val DEFAULT_FONT = "VeraMono.ttf"
 
@@ -97,8 +97,10 @@ class EMU
         cpu.setCPUCycleTime(cycleTime)
 
         // Attempt to load specified ROM file
-        if (rom != null && !memory.loadRom(rom)) {
-            LOGGER.severe("Could not load ROM [$rom]")
+        if (rom != null) {
+            if (!memory.loadRom(rom)) {
+                LOGGER.severe("Could not load ROM [$rom]")
+            }
         } else {
             cpu.setPaused(true)
         }
@@ -164,6 +166,11 @@ class EMU
         }
     }
 
+    /**
+     * Initializes the JFrame that the emulator will use to draw onto. Will set up the menu system and
+     * link the action listeners to the menu items. Returns the JFrame that contains all of the emulator
+     * screen elements.
+     */
     private fun initEmulatorJFrame() {
         container = JFrame(DEFAULT_TITLE)
         menuBar = JMenuBar()
@@ -188,7 +195,7 @@ class EMU
 
         // Reset CPU menu item
         val resetCPU = JMenuItem("Reset", KeyEvent.VK_R)
-        resetCPU.addActionListener(ResetMenuItemActionListener(cpu))
+        //resetCPU.addActionListener(ResetMenuItemActionListener(cpu))
         debugMenu.add(resetCPU)
         debugMenu.addSeparator()
 
@@ -236,6 +243,10 @@ class EMU
         canvas!!.addKeyListener(keyboard)
     }
 
+    /**
+     * Will redraw the contents of the screen to the emulator window. Optionally, if
+     * isInTraceMode is True, will also draw the contents of the overlayScreen to the screen.
+     */
     private fun refreshScreen() {
 
         // Check to see if the canvas should be regenerated
@@ -272,8 +283,9 @@ class EMU
         graphics.color = Color.white
         graphics.font = overlayFont
 
-        val debug = cpu.debug()
-        graphics.drawString(debug, 5, 16)
+        val line = cpu.trace()
+
+        graphics.drawString(line, 5, 16)
 
         graphics.dispose()
     }
@@ -296,8 +308,7 @@ class EMU
 
             Keyboard.CHIP8_NEXT -> cpu.fetchIncrementExecute()
 
-            else -> { //do nothing
-                }
+            else -> { }
         }
     }
 }

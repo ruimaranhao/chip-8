@@ -626,8 +626,8 @@ class CPU internal constructor(
         synthesizer!!.close()
     }
 
-    fun debug(): String {
-        return "I:" + index.hex + " DT:" + delay.hex + " ST:" + sound.hex + " PC:" + pc.hex + " "
+    fun trace(): String {
+        return "I: ${index.hex} DT: ${delay.hex} ST: ${sound.hex} PC: ${pc.hex}"
 
     }
 }

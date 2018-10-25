@@ -2,14 +2,16 @@ package com.ruimaranhao.chip8
 
 import spock.lang.Specification
 
+import com.ruimaranhao.chip8.emu.Memory
+
 class Chip8Test extends Specification {
 
     def "load rom, returns true"() {
         setup:
-        val memory = Memory()
+        Memory memory = new Memory()
 
         when:
-        val result = memory.loadRom("roms/PONG")
+        Boolean result = memory.loadRom("roms/PONG")
 
         then:
         result == true
